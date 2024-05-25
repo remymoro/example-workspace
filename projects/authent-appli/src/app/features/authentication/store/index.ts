@@ -35,7 +35,7 @@ export const AuthenticationStore = signalStore(
   { providedIn: 'root' },
   withState(initialeValue),
   withComputed((store) => ({
-    isAuthenticated: computed(() => store.user()),
+    isAuthenticated: computed(() => store.user() !== undefined),
   })),
   withMethods((store, infra = inject(AuthenticationInfrastructure)) => ({
     logIn: rxMethod<AuthenticationType>(

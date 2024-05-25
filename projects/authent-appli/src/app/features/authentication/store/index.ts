@@ -1,11 +1,21 @@
+import { inject } from '@angular/core';
 import { AuthenticationUser } from '../models/authentication-user';
-import { signalStore, withState } from '@ngrx/signals';
+import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
+import { rxMethod } from '@ngrx/signals/rxjs-interop';
+import { concatMap, pipe, tap } from 'rxjs';
+import { tapResponse } from '@ngrx/operators';
+import { AuthenticationInfrastructure } from '../services/authentication-infrastructure';
 
 // 1 . état à créer
 export interface AuthenticationState {
   user: AuthenticationUser | undefined | null;
   isLoading: boolean;
 }
+
+export type AuthenticationType = {
+  login: string;
+  password: string;
+};
 
 // 2 . valeur initiale
 const initialeValue: AuthenticationState = {
@@ -17,5 +27,21 @@ const initialeValue: AuthenticationState = {
 
 export const AuthenticationStore = signalStore(
   { providedIn: 'root' },
-  withState(initialeValue)
+  withState(initialeValue),
+  withMethods((store, infra = inject(AuthenticationInfrastructure)) => ({
+    logIn: rxMethod<AuthenticationType>(
+      pipe(
+        tap(() => patchState(store, { isLoading: true })),
+        concatMap((input) => {
+          return infra.login(input.login, input.password).pipe(
+            tapResponse({
+              next: (user) =>
+                patchState(store, { isLoading: false, user: user }),
+              error: () => patchState(store, { isLoading: false }),
+            })
+          );
+        })
+      )
+    ),
+  }))
 );
